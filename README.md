@@ -50,3 +50,5 @@ Versioned summaries
 You can re-run summary with different settings (tone/length/audience)
 
 Store each run with model params and prompt version
+
+## uvicorn app.main:app --reload
