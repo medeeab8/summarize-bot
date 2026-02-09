@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Summarize Bot</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div>
+          <h1>Summarize Bot</h1>
+          <p class="subtitle">Paste content, pick a summary type, and get a quick digest.</p>
+        </div>
+        <div class="status" id="apiStatus">
+          <span class="dot" id="apiDot"></span>
+          <span id="apiText">Checking API...</span>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div class="field">
+          <label for="apiBase">API Base URL</label>
+          <div class="row">
+            <input id="apiBase" type="text" placeholder="http://localhost:8000" />
+            <button id="checkApi" class="secondary">Check</button>
+          </div>
+          <small class="hint">Defaults to the current host. Health check uses /api/v1/health.</small>
+        </div>
+
+        <div class="field">
+          <label for="inputText">Content to summarize</label>
+          <textarea id="inputText" rows="10" placeholder="Paste text here..."></textarea>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="summaryType">Summary type</label>
+            <select id="summaryType">
+              <option value="tldr">TL;DR</option>
+              <option value="bullet">Bullet summary</option>
+              <option value="executive">Executive summary</option>
+              <option value="action_items">Action items</option>
+              <option value="explain_like_12">Explain like I’m 12</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="summaryLength">Length</label>
+            <select id="summaryLength">
+              <option value="short">Short</option>
+              <option value="medium">Medium</option>
+              <option value="long">Long</option>
+            </select>
+          </div>
+          <div class="field toggle">
+            <label for="mockMode">Mock mode</label>
+            <label class="switch">
+              <input type="checkbox" id="mockMode" checked />
+              <span class="slider"></span>
+            </label>
+            <small class="hint">Generate a client-side summary until the API is ready.</small>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="summarizeBtn" class="primary">Summarize</button>
+          <button id="clearBtn" class="secondary">Clear</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="field">
+          <label for="outputText">Summary output</label>
+          <textarea id="outputText" rows="10" readonly placeholder="Summary will appear here..."></textarea>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>Summarize Bot UI • Simple starter frontend</span>
+      </footer>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
