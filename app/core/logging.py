@@ -39,8 +39,13 @@ class ColorFormatter(logging.Formatter):
 		"5xx": "\x1b[31m",
 	}
 	RESET = "\x1b[0m"
+	UVICORN_ERROR_LOGGER = "uvicorn.error"
+	UVICORN_LOGGER_ALIAS = "uvicorn"
 
 	def format(self, record: logging.LogRecord) -> str:
+		original_name = record.name
+		if record.name == self.UVICORN_ERROR_LOGGER:
+			record.name = self.UVICORN_LOGGER_ALIAS
 		levelname = record.levelname
 		if levelname in self.COLORS:
 			record.levelname = f"{self.COLORS[levelname]}{levelname}{self.RESET}"
@@ -48,8 +53,10 @@ class ColorFormatter(logging.Formatter):
 				formatted = super().format(record)
 			finally:
 				record.levelname = levelname
+				record.name = original_name
 			return self._colorize_status_codes(formatted)
 		formatted = super().format(record)
+		record.name = original_name
 		return self._colorize_status_codes(formatted)
 
 	def _colorize_status_codes(self, text: str) -> str:
@@ -62,6 +69,16 @@ class ColorFormatter(logging.Formatter):
 			return f"{color}{code}{self.RESET}"
 
 		return re.sub(r"\b([1-5]\d{2})\b", repl, text)
+
+
+class UvicornErrorNameFilter(logging.Filter):
+	UVICORN_ERROR_LOGGER = "uvicorn.error"
+	UVICORN_LOGGER_ALIAS = "uvicorn"
+
+	def filter(self, record: logging.LogRecord) -> bool:
+		if record.name == self.UVICORN_ERROR_LOGGER:
+			record.name = self.UVICORN_LOGGER_ALIAS
+		return True
 
 
 def configure_logging(settings: Optional[LoggingSettings] = None) -> LoggingSettings:
@@ -86,6 +103,7 @@ def configure_logging(settings: Optional[LoggingSettings] = None) -> LoggingSett
 
 	console = logging.StreamHandler(stream=sys.stdout)
 	console.setFormatter(console_formatter)
+	console.addFilter(UvicornErrorNameFilter())
 	root.addHandler(console)
 
 	if settings.file_path:
@@ -95,6 +113,7 @@ def configure_logging(settings: Optional[LoggingSettings] = None) -> LoggingSett
 			backupCount=settings.file_backup_count,
 		)
 		file_handler.setFormatter(file_formatter)
+		file_handler.addFilter(UvicornErrorNameFilter())
 		root.addHandler(file_handler)
 
 	for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
