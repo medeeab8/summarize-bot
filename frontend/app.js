@@ -11,7 +11,10 @@ const summaryType = document.getElementById("summaryType");
 const summaryLength = document.getElementById("summaryLength");
 const mockMode = document.getElementById("mockMode");
 
-const defaultBaseUrl = window.location.origin;
+const isFileOrigin = window.location.protocol === "file:";
+const defaultBaseUrl = window.location.port === "5173" || isFileOrigin
+  ? "http://localhost:8000"
+  : window.location.origin;
 apiBaseInput.value = defaultBaseUrl;
 
 const setStatus = (state, text) => {
