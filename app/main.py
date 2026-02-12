@@ -3,12 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from .api.v1.routes.router import router
 from .core.logging import LoggingSettings, configure_logging
 from .exceptions.handlers import register_exception_handlers
+from .core.settings import get_settings
 
 logging_settings = LoggingSettings(level="DEBUG")  # Set log level to INFO for production
 configure_logging(logging_settings)  # Set log level to DEBUG for development
+settings = get_settings()
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Summarize Bot API", version="1.0.0")
+    app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 
     app.add_middleware(
         CORSMiddleware,
@@ -18,7 +20,7 @@ def create_app() -> FastAPI:
     )
 
     register_exception_handlers(app)
-    app.include_router(router, prefix="/api/v1")
+    app.include_router(router, prefix=settings.API_PREFIX)
 
     return app
 

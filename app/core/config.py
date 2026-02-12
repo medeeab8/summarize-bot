@@ -1,7 +1,7 @@
 import os
 
 # Logging configuration
-APP_ENV = os.getenv("APP_ENV", "development")
+APP_ENV = os.getenv("ENVIRONMENT", "development")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 LOG_FORMAT = os.getenv("LOG_FORMAT", "text")  # "text" or "json"
 LOG_JSON = os.getenv("LOG_JSON", "false").lower() in {"1", "true", "yes", "on"}
