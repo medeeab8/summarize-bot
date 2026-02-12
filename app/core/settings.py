@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Agent settings
+    AGENT_NAME: str = "Summarize Bot"
+    OPENAI_API_KEY: str = Field(..., env="OPENAI_API_KEY")
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
