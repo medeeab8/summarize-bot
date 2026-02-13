@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from openai import AsyncOpenAI
 
 from app.core.settings import get_settings

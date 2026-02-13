@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # Agent settings
     AGENT_NAME: str = "Summarize Bot"
     OPENAI_API_KEY: str = Field(..., env="OPENAI_API_KEY")
+    # LLM provider settings
+    LLM_PROVIDER: str = Field(default="openai", env="LLM_PROVIDER")  # 'openai' or 'ollama'
+    OLLAMA_API_URL: str = Field(default="http://localhost:11434", env="OLLAMA_API_URL")
 
 @lru_cache
 def get_settings() -> Settings:
