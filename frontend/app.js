@@ -70,7 +70,7 @@ const summarizeWithApi = async () => {
   }
 
   const data = await response.json();
-  return data.summary || data.result || "";
+  return data.summary || data.summarized_text || data.result || "";
 };
 
 summarizeBtn.addEventListener("click", async () => {

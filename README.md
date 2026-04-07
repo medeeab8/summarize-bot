@@ -52,3 +52,7 @@ You can re-run summary with different settings (tone/length/audience)
 Store each run with model params and prompt version
 
 ## uvicorn app.main:app --reload
+
+## cd /home/mbarbat/Projects/summarize-bot OPENAI_API_KEY=dummy python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+## cd /home/mbarbat/Projects/summarize-bot/frontend python serve.py
