@@ -44,7 +44,7 @@ def build_summary(text: str, summary_type: str, max_length: int) -> str:
 async def summarize(payload: SummarizeRequest):
     max_length = payload.max_length or LENGTH_TO_MAX_LENGTH[payload.length]
     summarized_text = build_summary(payload.text, payload.summary_type, max_length)
-
+    print(summarized_text)
     return {
         "summary": summarized_text,
         "original_text": payload.text,

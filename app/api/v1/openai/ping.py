@@ -1,20 +1,18 @@
 from fastapi import APIRouter, HTTPException
+import httpx
 from openai import OpenAIError, RateLimitError
 from app.services.ollama_client import get_llm_client
 from app.core.logging import logging
 
-router = APIRouter() 
+router = APIRouter()
 logger = logging.getLogger(__name__)
+
 
 @router.get("/ping", tags=["LLM"], summary="Ping LLM API")
 async def ping_llm():
     client = get_llm_client()
-    print(client)
-    print(f"client hasattr: {hasattr(client, "responses")}")
     logger.info("Pinging LLM API...")
     try:
-        # OpenAI client
-        """This kind of check is useful when you are working with objects whose type or structure might vary, or when you want to write code that can handle different types of clients in a flexible way. For example, if some client objects have a responses attribute (such as a list or method) and others do not, this check allows you to conditionally execute code that depends on the presence of that attribute, avoiding potential AttributeError exceptions."""
         if hasattr(client, "responses"):
             logger.info("Detected OpenAI client, sending ping...")
             response = await client.responses.create(
@@ -22,12 +20,13 @@ async def ping_llm():
                 input="ping",
             )
             return {"status": "success", "response_id": response.id}
-        # Ollama client
-        else:
+
+        if hasattr(client, "ping"):
             logger.info("Detected Ollama client, sending ping...")
-            response = await client.create_response(model="llama2", prompt="ping")
+            response = await client.ping()
             return {"status": "success", "response": response}
-    
+
+        raise HTTPException(status_code=500, detail="Unsupported LLM client configuration.")
     except RateLimitError as exc:
         logger.error(f"Rate limit error: {exc}")
         raise HTTPException(
@@ -40,8 +39,26 @@ async def ping_llm():
             status_code=502,
             detail="OpenAI request failed.",
         ) from exc
+    except httpx.TimeoutException as exc:
+        logger.error(f"LLM timeout: {exc}")
+        raise HTTPException(
+            status_code=504,
+            detail="Ollama request timed out.",
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        logger.error(f"Ollama HTTP error: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail="Ollama request failed.",
+        ) from exc
+    except httpx.RequestError as exc:
+        logger.error(f"Ollama connection error: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail="Could not connect to Ollama.",
+        ) from exc
     except Exception as exc:
-        logger.error(f"Unexpected error: {exc}")
+        logger.exception("Unexpected LLM ping error")
         raise HTTPException(
             status_code=502,
             detail=f"LLM request failed: {exc}",
