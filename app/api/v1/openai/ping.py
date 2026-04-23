@@ -13,16 +13,8 @@ async def ping_llm():
     client = get_llm_client()
     logger.info("Pinging LLM API...")
     try:
-        if hasattr(client, "responses"):
-            logger.info("Detected OpenAI client, sending ping...")
-            response = await client.responses.create(
-                model="gpt-4o-mini",
-                input="ping",
-            )
-            return {"status": "success", "response_id": response.id}
-
         if hasattr(client, "ping"):
-            logger.info("Detected Ollama client, sending ping...")
+            logger.info("Sending ping via configured LLM client...")
             response = await client.ping()
             return {"status": "success", "response": response}
 

@@ -1,0 +1,8 @@
+1. Extend settings in settings.py.
+Add model-level config so the app can choose models without hardcoding them in routes:
+OPENAI_MODEL, for example gpt-4o-mini
+OLLAMA_MODEL, for example llama2 or llama3.2
+LLM_TEMPERATURE
+
+2. Update the LLM service layer and ping/summarize paths to read settings.OPENAI_MODEL and settings.OLLAMA_MODEL instead of hardcoding model names in route or client code.
+3. Integrate Langchain with the summarize endpoint
