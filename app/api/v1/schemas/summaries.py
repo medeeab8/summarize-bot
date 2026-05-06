@@ -14,3 +14,23 @@ class SummarizeRequest(BaseModel):
     ] = "tldr"
     length: Literal["short", "medium", "long"] = "short"
     options: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SummarizeResponse(BaseModel):
+    summary: StrictStr
+    original_text: StrictStr
+    summarized_text: StrictStr
+    max_length: StrictInt
+    summary_type: Literal[
+        "tldr",
+        "bullet",
+        "executive",
+        "action_items",
+        "explain_like_12",
+    ]
+    length: Literal["short", "medium", "long"]
+    options: Dict[str, Any]
+    provider: StrictStr
+    model: StrictStr | None = None
+    approach: Literal["langchain", "extractive"]
+    fallback_used: bool

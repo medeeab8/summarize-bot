@@ -44,8 +44,9 @@ class OpenAIClient:
             "model": model or self.model,
         }
 
-    def get_chat_model(self, model: str | None = None):
-        return self._client if model is None or model == self.model else self._client.bind(model=model)
+    def get_chat_model(self, model: str | None = None, **kwargs):
+        llm = self._client if model is None or model == self.model else self._client.bind(model=model)
+        return llm.bind(**kwargs) if kwargs else llm
 
 
 def get_openai_client() -> OpenAIClient:
