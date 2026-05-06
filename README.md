@@ -69,3 +69,14 @@ Then test the API:
 
 `curl http://127.0.0.1:8000/api/v1/ping`
 
+## Make the summarize endpoint faster
+
+Short steps that were needed:
+
+1. Use the Ollama service inside Docker, so the backend talks to `http://ollama:11434` over the Compose network instead of relying on host networking.
+2. Make the `/summarize` endpoint call the LangChain + Ollama summarizer directly, instead of using only the fallback extractive summary path.
+3. Set real generation limits on the model call, so Ollama stops after a small summary instead of generating extra text that gets trimmed later.
+4. Keep the prompt short and explicit, asking for a concise summary in the requested format.
+5. Prefer a smaller or faster Ollama model if responses are still slow on CPU.
+6. Cleanly clip the final text at a sentence or word boundary, instead of forcing long outputs and ending them with `...`.
+

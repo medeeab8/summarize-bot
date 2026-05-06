@@ -46,6 +46,9 @@ SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
 )
 
 OUTPUT_PARSER = StrOutputParser()
+CHUNK_TARGET_CHARS = 6000
+CHUNK_SUMMARY_MAX_LENGTH = 600
+MAX_REDUCTION_PASSES = 4
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -56,8 +59,75 @@ def _split_sentences(text: str) -> list[str]:
     ]
 
 
+def _split_text_chunks(text: str, target_chars: int) -> list[str]:
+    paragraphs = [paragraph.strip() for paragraph in re.split(r"\n\s*\n", text.strip()) if paragraph.strip()]
+    if not paragraphs:
+        return []
+
+    chunks: list[str] = []
+    current_parts: list[str] = []
+    current_length = 0
+
+    def flush_current() -> None:
+        nonlocal current_parts, current_length
+        if current_parts:
+            chunks.append("\n\n".join(current_parts))
+            current_parts = []
+            current_length = 0
+
+    for paragraph in paragraphs:
+        if len(paragraph) > target_chars:
+            flush_current()
+            sentences = _split_sentences(paragraph)
+            if not sentences:
+                chunks.append(paragraph[:target_chars])
+                continue
+
+            sentence_parts: list[str] = []
+            sentence_length = 0
+            for sentence in sentences:
+                addition = len(sentence) + (1 if sentence_parts else 0)
+                if sentence_parts and sentence_length + addition > target_chars:
+                    chunks.append(" ".join(sentence_parts))
+                    sentence_parts = [sentence]
+                    sentence_length = len(sentence)
+                elif len(sentence) > target_chars:
+                    words = sentence.split()
+                    word_parts: list[str] = []
+                    word_length = 0
+                    for word in words:
+                        word_addition = len(word) + (1 if word_parts else 0)
+                        if word_parts and word_length + word_addition > target_chars:
+                            chunks.append(" ".join(word_parts))
+                            word_parts = [word]
+                            word_length = len(word)
+                        else:
+                            word_parts.append(word)
+                            word_length += word_addition
+                    if word_parts:
+                        chunks.append(" ".join(word_parts))
+                    sentence_parts = []
+                    sentence_length = 0
+                else:
+                    sentence_parts.append(sentence)
+                    sentence_length += addition
+            if sentence_parts:
+                chunks.append(" ".join(sentence_parts))
+            continue
+
+        addition = len(paragraph) + (2 if current_parts else 0)
+        if current_parts and current_length + addition > target_chars:
+            flush_current()
+        current_parts.append(paragraph)
+        current_length += len(paragraph) + (2 if len(current_parts) > 1 else 0)
+
+    flush_current()
+    return chunks
+
+
 def _clip_text(text: str, max_length: int) -> str:
-    text = text.strip()
+    text = text.strip() # removes whitespace from the beginning and end
+    # the two re.sub(...) calls remove unwanted trailing endings: the first strips off ellipses like ... or …, and the second removes leftover trailing separators such as spaces, commas, colons, semicolons, and dash characters.
     text = re.sub(r"(?:\s*(?:\.{3,}|…))+\s*$", "", text)
     text = re.sub(r"[\s,:;\-–—]+$", "", text)
 
@@ -136,28 +206,50 @@ class SummaryService:
             }
 
         try:
-            chain = (
-                SUMMARY_PROMPT
-                | self._llm_client.get_chat_model(**self._generation_kwargs(max_length))
-                | OUTPUT_PARSER
-            )
-            summary = await chain.ainvoke(
-                {
-                    "summary_instruction": SUMMARY_TYPE_INSTRUCTIONS.get(
-                        summary_type,
-                        SUMMARY_TYPE_INSTRUCTIONS["tldr"],
-                    ),
-                    "length_instruction": LENGTH_INSTRUCTIONS.get(
-                        length,
-                        LENGTH_INSTRUCTIONS["short"],
-                    ),
-                    "max_length": max_length,
-                    "text": text.strip(),
-                }
-            )
-            summary = _clip_text(str(summary).strip(), max_length)
-            if not summary:
-                raise ValueError("Empty summary returned by LLM")
+            async def run_langchain_summary(source_text: str, limit: int) -> str:
+                chain = (
+                    SUMMARY_PROMPT
+                    | self._llm_client.get_chat_model(**self._generation_kwargs(limit))
+                    | OUTPUT_PARSER
+                )
+                generated_summary = await chain.ainvoke(
+                    {
+                        "summary_instruction": SUMMARY_TYPE_INSTRUCTIONS.get(
+                            summary_type,
+                            SUMMARY_TYPE_INSTRUCTIONS["tldr"],
+                        ),
+                        "length_instruction": LENGTH_INSTRUCTIONS.get(
+                            length,
+                            LENGTH_INSTRUCTIONS["short"],
+                        ),
+                        "max_length": limit,
+                        "text": source_text.strip(),
+                    }
+                )
+                generated_summary = _clip_text(str(generated_summary).strip(), limit)
+                if not generated_summary:
+                    raise ValueError("Empty summary returned by LLM")
+                return generated_summary
+
+            current_text = text.strip()
+            for _ in range(MAX_REDUCTION_PASSES):
+                if len(current_text) <= CHUNK_TARGET_CHARS:
+                    summary = await run_langchain_summary(current_text, max_length)
+                    break
+
+                chunks = _split_text_chunks(current_text, CHUNK_TARGET_CHARS)
+                if len(chunks) <= 1:
+                    summary = await run_langchain_summary(current_text[:CHUNK_TARGET_CHARS], max_length)
+                    break
+
+                chunk_max_length = min(CHUNK_SUMMARY_MAX_LENGTH, max(200, max_length * 2))
+                chunk_summaries = []
+                for chunk in chunks:
+                    chunk_summaries.append(await run_langchain_summary(chunk, chunk_max_length))
+                current_text = "\n\n".join(chunk_summaries)
+            else:
+                summary = await run_langchain_summary(current_text[:CHUNK_TARGET_CHARS], max_length)
+
             return {
                 "summary": summary,
                 "provider": provider,
