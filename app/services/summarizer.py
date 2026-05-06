@@ -32,14 +32,14 @@ SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are a precise summarization assistant. Follow the requested format, stay faithful to the source, and do not invent facts.",
+            "You are a precise summarization assistant. Follow the requested format, stay faithful to the source, do not invent facts, and end cleanly without trailing ellipses.",
         ),
         (
             "human",
             "Task: {summary_instruction}\n"
             "Length guidance: {length_instruction}\n"
             "Hard limit: keep the response within about {max_length} characters.\n"
-            "Return only the summary.\n\n"
+            "Return only the summary. End with a complete, concise final sentence or bullet, never with '...' or '…'.\n\n"
             "Source text:\n{text}",
         ),
     ]
@@ -57,9 +57,41 @@ def _split_sentences(text: str) -> list[str]:
 
 
 def _clip_text(text: str, max_length: int) -> str:
-    if len(text) <= max_length:
+    text = text.strip()
+    text = re.sub(r"(?:\s*(?:\.{3,}|…))+\s*$", "", text)
+    text = re.sub(r"[\s,:;\-–—]+$", "", text)
+
+    if len(text) > max_length:
+        clipped = text[:max_length].rstrip()
+
+        sentence_boundary = max(clipped.rfind(". "), clipped.rfind("! "), clipped.rfind("? "))
+        if sentence_boundary >= max_length // 2:
+            clipped = clipped[: sentence_boundary + 1].rstrip()
+        else:
+            newline_boundary = clipped.rfind("\n")
+            word_boundary = clipped.rfind(" ")
+            boundary = max(newline_boundary, word_boundary)
+            if boundary > 0:
+                clipped = clipped[:boundary].rstrip()
+
+        text = re.sub(r"(?:\s*(?:\.{3,}|…))+\s*$", "", clipped)
+        text = re.sub(r"[\s,:;\-–—]+$", "", text)
+
+    if not text:
+        return ""
+
+    is_bullet_list = any(
+        line.lstrip().startswith(("- ", "* ", "• "))
+        for line in text.splitlines()
+        if line.strip()
+    )
+    if is_bullet_list:
         return text
-    return text[: max_length - 3].rstrip() + "..."
+
+    if text[-1] not in ".!?)]}\"'”’":
+        text += "."
+
+    return text
 
 
 class SummaryService:
