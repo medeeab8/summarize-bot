@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 import httpx
 from openai import OpenAIError, RateLimitError
+from app.core.settings import get_settings
 from app.services.ollama_client import get_llm_client
 from app.core.logging import logging
 
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 @router.get("/ping", tags=["LLM"], summary="Ping LLM API")
 async def ping_llm():
     client = get_llm_client()
+    settings = get_settings()
     logger.info("Pinging LLM API...")
     try:
         if hasattr(client, "ping"):
@@ -45,9 +47,16 @@ async def ping_llm():
         ) from exc
     except httpx.RequestError as exc:
         logger.error(f"Ollama connection error: {exc}")
+        detail = "Could not connect to Ollama."
+        if settings.LLM_PROVIDER.lower() == "ollama":
+            detail = f"Could not connect to Ollama at {settings.OLLAMA_API_URL}."
+            if settings.OLLAMA_API_URL == "http://ollama:11434":
+                detail += " Make sure the Compose ollama service is running and the model has been pulled into that container."
+            elif "host.docker.internal" in settings.OLLAMA_API_URL:
+                detail += " If the API is running in Docker on Linux, either expose the host Ollama listener on 0.0.0.0:11434 or switch OLLAMA_API_URL to http://ollama:11434 and use the Compose ollama service."
         raise HTTPException(
             status_code=502,
-            detail="Could not connect to Ollama.",
+            detail=detail,
         ) from exc
     except Exception as exc:
         logger.exception("Unexpected LLM ping error")

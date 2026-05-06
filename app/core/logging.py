@@ -4,6 +4,7 @@ import logging
 import re
 import sys
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -107,6 +108,7 @@ def configure_logging(settings: Optional[LoggingSettings] = None) -> LoggingSett
 	root.addHandler(console)
 
 	if settings.file_path:
+		Path(settings.file_path).parent.mkdir(parents=True, exist_ok=True)
 		file_handler = RotatingFileHandler(
 			settings.file_path,
 			maxBytes=settings.file_max_bytes,

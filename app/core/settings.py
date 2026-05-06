@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),
         env_file_encoding="utf-8",
+        env_ignore_empty=True,
         extra="ignore",
         case_sensitive=False,
         )
@@ -52,7 +53,7 @@ class Settings(BaseSettings):
 
     # LLM provider settings
     LLM_PROVIDER: str = Field(default="openai", env="LLM_PROVIDER")  # 'openai' or 'ollama'
-    OLLAMA_API_URL: str = Field(default="http://localhost:11434", env="OLLAMA_API_URL")
+    OLLAMA_API_URL: str = Field(default="http://ollama:11434", env="OLLAMA_API_URL")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini", env="OPENAI_MODEL")
     OLLAMA_MODEL: str = Field(default="llama2", env="OLLAMA_MODEL")
     LLM_TEMPERATURE: float = Field(default=0.2, env="LLM_TEMPERATURE")

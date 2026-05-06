@@ -56,3 +56,16 @@ Store each run with model params and prompt version
 ## cd /home/mbarbat/Projects/summarize-bot OPENAI_API_KEY=dummy python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 ## cd /home/mbarbat/Projects/summarize-bot/frontend python serve.py
+
+## Docker development
+
+`docker compose up --build` now starts the backend, frontend, and Ollama together. The backend uses `http://ollama:11434` by default inside the Compose network.
+
+After the first startup, pull the model into the Ollama container:
+
+`docker-compose exec ollama ollama pull llama2:latest`
+
+Then test the API:
+
+`curl http://127.0.0.1:8000/api/v1/ping`
+
