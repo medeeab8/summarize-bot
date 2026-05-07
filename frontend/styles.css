@@ -64,6 +64,28 @@ body {
   margin-bottom: 0;
 }
 
+.counter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.counter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(11, 15, 42, 0.55);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.counter-pill strong {
+  color: var(--text);
+}
+
 label {
   font-weight: 600;
 }

@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = Field(default="llama2", env="OLLAMA_MODEL")
     LLM_TEMPERATURE: float = Field(default=0.2, env="LLM_TEMPERATURE")
     SUMMARY_MAX_TOKENS: int = Field(default=400, env="SUMMARY_MAX_TOKENS")
+    SUMMARY_MAX_LENGTH: int = Field(default=5000, env="SUMMARY_MAX_LENGTH")
 
 @lru_cache
 def get_settings() -> Settings:

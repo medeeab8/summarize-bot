@@ -32,6 +32,9 @@
         <div class="field">
           <label for="inputText">Content to summarize</label>
           <textarea id="inputText" rows="10" placeholder="Paste text here..."></textarea>
+          <div class="counter-row">
+            <span class="counter-pill">Characters: <strong id="inputCharacterCount">0</strong></span>
+          </div>
         </div>
 
         <div class="grid">
@@ -41,7 +44,6 @@
               <option value="tldr">TL;DR</option>
               <option value="bullet">Bullet summary</option>
               <option value="executive">Executive summary</option>
-              <option value="action_items">Action items</option>
               <option value="explain_like_12">Explain like I’m 12</option>
             </select>
           </div>
@@ -51,12 +53,17 @@
               <option value="short">Short</option>
               <option value="medium">Medium</option>
               <option value="long">Long</option>
+              <option value="custom">Custom</option>
             </select>
+          </div>
+          <div class="field" id="customLengthField" hidden>
+            <label for="customLength">Custom max characters</label>
+            <input id="customLength" type="number" min="1" step="1" placeholder="e.g. 350" />
           </div>
           <div class="field toggle">
             <label for="mockMode">Mock mode</label>
             <label class="switch">
-              <input type="checkbox" id="mockMode" checked />
+              <input type="checkbox" id="mockMode" />
               <span class="slider"></span>
             </label>
             <small class="hint">Generate a client-side summary until the API is ready.</small>
@@ -73,6 +80,10 @@
         <div class="field">
           <label for="outputText">Summary output</label>
           <textarea id="outputText" rows="10" readonly placeholder="Summary will appear here..."></textarea>
+          <div class="counter-row">
+            <span class="counter-pill">Characters: <strong id="outputCharacterCount">0</strong></span>
+            <span class="counter-pill" id="backendCharacterCountPill" hidden>Backend: <strong id="backendCharacterCount">0</strong></span>
+          </div>
         </div>
       </section>
 

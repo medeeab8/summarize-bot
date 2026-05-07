@@ -29,8 +29,6 @@ Bullet summary
 
 Executive summary
 
-Action items / key takeaways
-
 “Explain like I’m 12”
 
 Support “chat with your summary”

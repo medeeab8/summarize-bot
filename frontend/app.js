@@ -7,8 +7,14 @@ const summarizeBtn = document.getElementById("summarizeBtn");
 const clearBtn = document.getElementById("clearBtn");
 const inputText = document.getElementById("inputText");
 const outputText = document.getElementById("outputText");
+const inputCharacterCount = document.getElementById("inputCharacterCount");
+const outputCharacterCount = document.getElementById("outputCharacterCount");
+const backendCharacterCount = document.getElementById("backendCharacterCount");
+const backendCharacterCountPill = document.getElementById("backendCharacterCountPill");
 const summaryType = document.getElementById("summaryType");
 const summaryLength = document.getElementById("summaryLength");
+const customLengthField = document.getElementById("customLengthField");
+const customLengthInput = document.getElementById("customLength");
 const mockMode = document.getElementById("mockMode");
 
 const isFileOrigin = window.location.protocol === "file:";
@@ -24,6 +30,77 @@ const setStatus = (state, text) => {
 };
 
 const normalizeBase = (value) => value.replace(/\/$/, "");
+
+const countCharacters = (text) => text.length;
+
+const updateCharacterCount = (element, text) => {
+  element.textContent = String(countCharacters(text));
+};
+
+const setBackendCharacterCount = (value) => {
+  const hasValue = Number.isFinite(value);
+  backendCharacterCountPill.hidden = !hasValue;
+  backendCharacterCount.textContent = hasValue ? String(value) : "0";
+};
+
+const getInputLength = () => countCharacters(inputText.value);
+
+const getCustomLength = () => {
+  if (summaryLength.value !== "custom") {
+    return null;
+  }
+
+  const parsed = Number.parseInt(customLengthInput.value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const getCustomLengthError = () => {
+  if (summaryLength.value !== "custom") {
+    return null;
+  }
+
+  const customLength = getCustomLength();
+  if (!customLength) {
+    return "Enter a custom character limit greater than 0.";
+  }
+
+  const inputLength = getInputLength();
+  if (inputLength > 0 && customLength > inputLength) {
+    return `Custom character limit cannot exceed the input length (${inputLength}).`;
+  }
+
+  return null;
+};
+
+const syncCustomLengthValidation = () => {
+  const inputLength = getInputLength();
+  customLengthInput.max = String(Math.max(inputLength, 1));
+
+  const errorMessage = getCustomLengthError();
+  customLengthInput.setCustomValidity(errorMessage || "");
+  customLengthInput.title = inputLength > 0
+    ? `Maximum allowed: ${inputLength} characters`
+    : "Paste content before setting a custom character limit.";
+
+  return errorMessage;
+};
+
+const updateCustomLengthVisibility = () => {
+  const isCustom = summaryLength.value === "custom";
+
+  customLengthField.hidden = !isCustom;
+  customLengthInput.disabled = !isCustom;
+
+  if (!isCustom) {
+    customLengthInput.setCustomValidity("");
+  }
+
+  syncCustomLengthValidation();
+};
 
 const checkApi = async () => {
   const baseUrl = normalizeBase(apiBaseInput.value || defaultBaseUrl);
@@ -41,22 +118,30 @@ const checkApi = async () => {
 
 const summarizeMock = (text) => {
   if (!text.trim()) {
-    return "";
+    return { summary: "", summary_character_count: 0 };
   }
   const sentences = text.split(/(?<=[.!?])\s+/).slice(0, 3);
   const preview = sentences.join(" ").trim();
+  const customLength = getCustomLength();
   if (summaryType.value === "bullet") {
-    return sentences.map((line) => `• ${line.trim()}`).join("\n");
+    const bulletPreview = sentences.map((line) => `• ${line.trim()}`).join("\n");
+    const summary = customLength ? bulletPreview.slice(0, customLength).trim() : bulletPreview;
+    return { summary, summary_character_count: countCharacters(summary) };
   }
-  return preview;
+  const summary = customLength ? preview.slice(0, customLength).trim() : preview;
+  return { summary, summary_character_count: countCharacters(summary) };
 };
 
 const summarizeWithApi = async () => {
   const baseUrl = normalizeBase(apiBaseInput.value || defaultBaseUrl);
+
+  const customLength = getCustomLength();
+
   const payload = {
     text: inputText.value,
     summary_type: summaryType.value,
-    length: summaryLength.value,
+    length: summaryLength.value === "custom" ? "custom" : summaryLength.value,
+    max_length: summaryLength.value === "custom" ? customLength : null,
   };
 
   const response = await fetch(`${baseUrl}/api/v1/summarize`, {
@@ -70,14 +155,28 @@ const summarizeWithApi = async () => {
   }
 
   const data = await response.json();
-  return data.summary || data.summarized_text || data.result || "";
+  return {
+    summary: data.summary || data.summarized_text || data.result || "",
+    summary_character_count: Number.isFinite(data.summary_character_count) ? data.summary_character_count : null,
+  };
 };
 
 summarizeBtn.addEventListener("click", async () => {
   outputText.value = "";
+  updateCharacterCount(outputCharacterCount, "");
+  setBackendCharacterCount(null);
   const content = inputText.value.trim();
   if (!content) {
     outputText.value = "Please paste some content to summarize.";
+    updateCharacterCount(outputCharacterCount, outputText.value);
+    return;
+  }
+
+  const customLengthError = syncCustomLengthValidation();
+  if (customLengthError) {
+    outputText.value = customLengthError;
+    updateCharacterCount(outputCharacterCount, outputText.value);
+    customLengthInput.reportValidity();
     return;
   }
 
@@ -85,13 +184,18 @@ summarizeBtn.addEventListener("click", async () => {
   summarizeBtn.textContent = "Summarizing...";
 
   try {
+    let result;
     if (mockMode.checked) {
-      outputText.value = summarizeMock(content);
+      result = summarizeMock(content);
     } else {
-      outputText.value = await summarizeWithApi();
+      result = await summarizeWithApi();
     }
+    outputText.value = result.summary;
+    updateCharacterCount(outputCharacterCount, result.summary);
+    setBackendCharacterCount(result.summary_character_count);
   } catch (error) {
     outputText.value = "Unable to summarize via API. Enable mock mode or check the API URL.";
+    updateCharacterCount(outputCharacterCount, outputText.value);
   } finally {
     summarizeBtn.disabled = false;
     summarizeBtn.textContent = "Summarize";
@@ -101,8 +205,21 @@ summarizeBtn.addEventListener("click", async () => {
 clearBtn.addEventListener("click", () => {
   inputText.value = "";
   outputText.value = "";
+  updateCharacterCount(inputCharacterCount, "");
+  updateCharacterCount(outputCharacterCount, "");
+  setBackendCharacterCount(null);
 });
 
 checkApiBtn.addEventListener("click", checkApi);
+summaryLength.addEventListener("change", updateCustomLengthVisibility);
+inputText.addEventListener("input", () => {
+  updateCharacterCount(inputCharacterCount, inputText.value);
+  syncCustomLengthValidation();
+});
+customLengthInput.addEventListener("input", syncCustomLengthValidation);
 
+updateCustomLengthVisibility();
+updateCharacterCount(inputCharacterCount, inputText.value);
+updateCharacterCount(outputCharacterCount, outputText.value);
+setBackendCharacterCount(null);
 checkApi();

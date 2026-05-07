@@ -3,6 +3,7 @@ from fastapi import Depends
 
 from app.api.v1.schemas.summaries import SummarizeRequest
 from app.api.v1.schemas.summaries import SummarizeResponse
+from app.services.summarizer import count_characters
 from app.services.summarizer import LENGTH_TO_MAX_LENGTH
 from app.services.summarizer import SummaryService
 from app.services.summarizer import get_summary_service
@@ -19,7 +20,16 @@ async def summarize(
     payload: SummarizeRequest,
     summary_service: SummaryService = Depends(get_summary_service),
 ) -> SummarizeResponse:
-    max_length = payload.max_length or LENGTH_TO_MAX_LENGTH[payload.length]
+    input_length = len(payload.text)
+    original_character_count = count_characters(payload.text)
+
+    if payload.length == "custom":
+        requested_max_length = input_length
+    else:
+        requested_max_length = payload.max_length or LENGTH_TO_MAX_LENGTH[payload.length]
+
+    max_length = min(requested_max_length, input_length)
+
     result = await summary_service.summarize(
         text=payload.text,
         summary_type=payload.summary_type,
@@ -27,11 +37,16 @@ async def summarize(
         max_length=max_length,
         options=payload.options,
     )
+
     summarized_text = result["summary"]
+    summary_character_count = count_characters(summarized_text)
+    
     return SummarizeResponse(
         summary=summarized_text,
         original_text=payload.text,
         summarized_text=summarized_text,
+        original_character_count=original_character_count,
+        summary_character_count=summary_character_count,
         max_length=max_length,
         summary_type=payload.summary_type,
         length=payload.length,

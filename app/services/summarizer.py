@@ -9,16 +9,15 @@ from app.core.settings import get_settings
 from app.services.ollama_client import get_llm_client
 
 LENGTH_TO_MAX_LENGTH = {
-    "short": 120,
-    "medium": 240,
-    "long": 400,
+    "short": 150,
+    "medium": 500,
+    "long": 1000,
 }
 
 SUMMARY_TYPE_INSTRUCTIONS = {
     "tldr": "Write a concise TL;DR in 2 to 3 sentences.",
     "bullet": "Write a short bullet list of the most important points.",
     "executive": "Write an executive summary with the main outcome, key context, and notable risks.",
-    "action_items": "Extract concrete action items or next steps as bullet points.",
     "explain_like_12": "Explain the content in simple language for a 12-year-old.",
 }
 
@@ -26,6 +25,7 @@ LENGTH_INSTRUCTIONS = {
     "short": "Keep it brief and dense.",
     "medium": "Keep it moderately detailed.",
     "long": "Allow more detail while staying focused on the main ideas.",
+    "custom": "Follow the requested character target closely while staying coherent.",
 }
 
 SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
@@ -49,6 +49,10 @@ OUTPUT_PARSER = StrOutputParser()
 CHUNK_TARGET_CHARS = 6000
 CHUNK_SUMMARY_MAX_LENGTH = 600
 MAX_REDUCTION_PASSES = 4
+
+
+def count_characters(text: str) -> int:
+    return len(text)
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -259,7 +263,7 @@ class SummaryService:
             }
         except Exception:
             del options
-            if summary_type in {"bullet", "action_items"}:
+            if summary_type == "bullet":
                 summary = _clip_text(
                     "\n".join(f"- {sentence}" for sentence in sentences[:3]),
                     max_length,
