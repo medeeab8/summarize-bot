@@ -24,7 +24,7 @@ async def summarize(
     original_character_count = count_characters(payload.text)
 
     if payload.length == "custom":
-        requested_max_length = input_length
+        requested_max_length = payload.max_length
     else:
         requested_max_length = payload.max_length or LENGTH_TO_MAX_LENGTH[payload.length]
 
@@ -39,14 +39,12 @@ async def summarize(
     )
 
     summarized_text = result["summary"]
-    summary_character_count = count_characters(summarized_text)
     
     return SummarizeResponse(
         summary=summarized_text,
         original_text=payload.text,
         summarized_text=summarized_text,
         original_character_count=original_character_count,
-        summary_character_count=summary_character_count,
         max_length=max_length,
         summary_type=payload.summary_type,
         length=payload.length,

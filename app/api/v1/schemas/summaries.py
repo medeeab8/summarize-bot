@@ -37,7 +37,6 @@ class SummarizeResponse(BaseModel):
     original_text: StrictStr
     summarized_text: StrictStr
     original_character_count: StrictInt
-    summary_character_count: StrictInt
     max_length: StrictInt
     summary_type: Literal[
         "tldr",

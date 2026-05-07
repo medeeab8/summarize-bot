@@ -9,8 +9,6 @@ const inputText = document.getElementById("inputText");
 const outputText = document.getElementById("outputText");
 const inputCharacterCount = document.getElementById("inputCharacterCount");
 const outputCharacterCount = document.getElementById("outputCharacterCount");
-const backendCharacterCount = document.getElementById("backendCharacterCount");
-const backendCharacterCountPill = document.getElementById("backendCharacterCountPill");
 const summaryType = document.getElementById("summaryType");
 const summaryLength = document.getElementById("summaryLength");
 const customLengthField = document.getElementById("customLengthField");
@@ -35,12 +33,6 @@ const countCharacters = (text) => text.length;
 
 const updateCharacterCount = (element, text) => {
   element.textContent = String(countCharacters(text));
-};
-
-const setBackendCharacterCount = (value) => {
-  const hasValue = Number.isFinite(value);
-  backendCharacterCountPill.hidden = !hasValue;
-  backendCharacterCount.textContent = hasValue ? String(value) : "0";
 };
 
 const getInputLength = () => countCharacters(inputText.value);
@@ -118,7 +110,7 @@ const checkApi = async () => {
 
 const summarizeMock = (text) => {
   if (!text.trim()) {
-    return { summary: "", summary_character_count: 0 };
+    return { summary: "" };
   }
   const sentences = text.split(/(?<=[.!?])\s+/).slice(0, 3);
   const preview = sentences.join(" ").trim();
@@ -126,10 +118,10 @@ const summarizeMock = (text) => {
   if (summaryType.value === "bullet") {
     const bulletPreview = sentences.map((line) => `• ${line.trim()}`).join("\n");
     const summary = customLength ? bulletPreview.slice(0, customLength).trim() : bulletPreview;
-    return { summary, summary_character_count: countCharacters(summary) };
+    return { summary };
   }
   const summary = customLength ? preview.slice(0, customLength).trim() : preview;
-  return { summary, summary_character_count: countCharacters(summary) };
+  return { summary };
 };
 
 const summarizeWithApi = async () => {
@@ -157,14 +149,12 @@ const summarizeWithApi = async () => {
   const data = await response.json();
   return {
     summary: data.summary || data.summarized_text || data.result || "",
-    summary_character_count: Number.isFinite(data.summary_character_count) ? data.summary_character_count : null,
   };
 };
 
 summarizeBtn.addEventListener("click", async () => {
   outputText.value = "";
   updateCharacterCount(outputCharacterCount, "");
-  setBackendCharacterCount(null);
   const content = inputText.value.trim();
   if (!content) {
     outputText.value = "Please paste some content to summarize.";
@@ -192,7 +182,6 @@ summarizeBtn.addEventListener("click", async () => {
     }
     outputText.value = result.summary;
     updateCharacterCount(outputCharacterCount, result.summary);
-    setBackendCharacterCount(result.summary_character_count);
   } catch (error) {
     outputText.value = "Unable to summarize via API. Enable mock mode or check the API URL.";
     updateCharacterCount(outputCharacterCount, outputText.value);
@@ -207,7 +196,6 @@ clearBtn.addEventListener("click", () => {
   outputText.value = "";
   updateCharacterCount(inputCharacterCount, "");
   updateCharacterCount(outputCharacterCount, "");
-  setBackendCharacterCount(null);
 });
 
 checkApiBtn.addEventListener("click", checkApi);
@@ -221,5 +209,4 @@ customLengthInput.addEventListener("input", syncCustomLengthValidation);
 updateCustomLengthVisibility();
 updateCharacterCount(inputCharacterCount, inputText.value);
 updateCharacterCount(outputCharacterCount, outputText.value);
-setBackendCharacterCount(null);
 checkApi();
