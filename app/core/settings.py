@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     SUMMARY_MAX_TOKENS: int = Field(default=400, env="SUMMARY_MAX_TOKENS")
     SUMMARY_MAX_LENGTH: int = Field(default=5000, env="SUMMARY_MAX_LENGTH")
 
+    # File upload settings
+    UPLOAD_DIR: str = "storage/uploads"
+    EXTRACTED_TEXT_DIR: str = "storage/extracted_text"
+    MAX_UPLOAD_SIZE_MS: int = 20
+    ALLOWED_DOCUMENT_EXTENSTIONS: set[str] = {"pdf", "txt", "md"}
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()

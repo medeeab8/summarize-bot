@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.v1.routes.router import router
+from .db.init_db import init_db
 from .core.logging import LoggingSettings, configure_logging
 from .exceptions.handlers import register_exception_handlers
 from .core.settings import get_settings
@@ -11,6 +12,10 @@ settings = get_settings()
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
+
+    @app.on_event("startup")
+    async def startup() -> None:
+        await init_db()
 
     app.add_middleware(
         CORSMiddleware,
