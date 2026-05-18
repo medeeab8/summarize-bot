@@ -14,11 +14,48 @@ LENGTH_TO_MAX_LENGTH = {
     "long": 1000,
 }
 
-SUMMARY_TYPE_INSTRUCTIONS = {
-    "tldr": "Write a concise TL;DR in 2 to 3 sentences.",
-    "bullet": "Write a short bullet list of the most important points.",
-    "executive": "Write an executive summary with the main outcome, key context, and notable risks.",
-    "explain_like_12": "Explain the content in simple language for a 12-year-old.",
+SUMMARY_STYLE_PROMPTS = {
+    "tldr": {
+        "system": (
+            "You are a newsroom summary editor. Compress the source into a sharp TL;DR that surfaces only the"
+            " main point, the most important supporting context, and the practical takeaway. Avoid filler,"
+            " examples, and scene-setting unless they are essential to understand the conclusion."
+        ),
+        "instruction": (
+            "Write exactly 2 to 3 compact sentences. Lead with the main conclusion immediately. Use plain prose,"
+            " not bullets, headings, or labels."
+        ),
+    },
+    "bullet": {
+        "system": (
+            "You are an operations note-taker. Turn the source into a scannable list of the most actionable or"
+            " decision-relevant points. Prioritize clarity and separation of ideas over narrative flow."
+        ),
+        "instruction": (
+            "Return 3 to 6 bullets starting with '- '. Each bullet should contain one distinct takeaway and be"
+            " concise. Do not write an introductory sentence or concluding paragraph."
+        ),
+    },
+    "executive": {
+        "system": (
+            "You are briefing an executive who needs signal, not detail. Emphasize outcomes, business impact,"
+            " constraints, and material risks. Keep the tone professional and high-level."
+        ),
+        "instruction": (
+            "Write a short executive summary in 2 to 4 paragraphs. Cover the primary outcome first, then the key"
+            " context, implications, and any notable risks or open issues. Avoid bullets and casual language."
+        ),
+    },
+    "explain_like_12": {
+        "system": (
+            "You are a patient teacher explaining complex material to a curious 12-year-old. Favor concrete words," 
+            " short sentences, and simple comparisons without becoming silly or inaccurate."
+        ),
+        "instruction": (
+            "Explain the ideas in simple everyday language. Define jargon in place, keep the tone warm and clear,"
+            " and make the explanation feel easy to follow for a young reader. Use plain prose, not bullets."
+        ),
+    },
 }
 
 LENGTH_INSTRUCTIONS = {
@@ -32,14 +69,18 @@ SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are a precise summarization assistant. Follow the requested format, stay faithful to the source, do not invent facts, and end cleanly without trailing ellipses.",
+            "{style_system}\n\n"
+            "Stay faithful to the source, do not invent facts, and preserve the requested format. If the source"
+            " is uncertain, keep that uncertainty in the summary instead of smoothing it over. End cleanly without"
+            " trailing ellipses.",
         ),
         (
             "human",
-            "Task: {summary_instruction}\n"
+            "Summary style instructions: {style_instruction}\n"
             "Length guidance: {length_instruction}\n"
             "Hard limit: keep the response within about {max_length} characters.\n"
-            "Return only the summary. End with a complete, concise final sentence or bullet, never with '...' or '…'.\n\n"
+            "Return only the summary. Match the requested structure exactly. End with a complete final sentence or"
+            " bullet, never with '...' or '…'.\n\n"
             "Source text:\n{text}",
         ),
     ]
@@ -53,6 +94,10 @@ MAX_REDUCTION_PASSES = 4
 
 def count_characters(text: str) -> int:
     return len(text)
+
+
+def _get_summary_style_prompt(summary_type: str) -> dict[str, str]:
+    return SUMMARY_STYLE_PROMPTS.get(summary_type, SUMMARY_STYLE_PROMPTS["tldr"])
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -168,6 +213,44 @@ def _clip_text(text: str, max_length: int) -> str:
     return text
 
 
+def _fallback_summary(text: str, summary_type: str, max_length: int) -> str:
+    sentences = _split_sentences(text)
+    if not sentences:
+        return ""
+
+    if summary_type == "bullet":
+        return _clip_text(
+            "\n".join(f"- {sentence}" for sentence in sentences[:5]),
+            max_length,
+        )
+
+    if summary_type == "executive":
+        main_points = sentences[:4]
+        if not main_points:
+            return ""
+
+        paragraphs = [
+            f"Primary outcome: {main_points[0]}",
+            " ".join(main_points[1:3]) if len(main_points) > 1 else "",
+            f"Notable implication: {main_points[3]}" if len(main_points) > 3 else "",
+        ]
+        return _clip_text("\n\n".join(paragraph for paragraph in paragraphs if paragraph), max_length)
+
+    if summary_type == "explain_like_12":
+        simple_sentences = []
+        for sentence in sentences[:4]:
+            cleaned = sentence.strip()
+            if cleaned:
+                simple_sentences.append(cleaned)
+
+        explanation = " ".join(simple_sentences)
+        if explanation:
+            explanation = f"In simple terms, {explanation[0].lower() + explanation[1:] if len(explanation) > 1 else explanation.lower()}"
+        return _clip_text(explanation, max_length)
+
+    return _clip_text(" ".join(sentences[:3]), max_length)
+
+
 class SummaryService:
     def __init__(self, llm_client=None):
         self._llm_client = llm_client or get_llm_client()
@@ -199,8 +282,7 @@ class SummaryService:
     ) -> dict[str, object]:
         provider = self._provider_name()
         model = self._model_name()
-        sentences = _split_sentences(text)
-        if not sentences:
+        if not _split_sentences(text):
             return {
                 "summary": "",
                 "provider": provider,
@@ -218,10 +300,8 @@ class SummaryService:
                 )
                 generated_summary = await chain.ainvoke(
                     {
-                        "summary_instruction": SUMMARY_TYPE_INSTRUCTIONS.get(
-                            summary_type,
-                            SUMMARY_TYPE_INSTRUCTIONS["tldr"],
-                        ),
+                        "style_system": _get_summary_style_prompt(summary_type)["system"],
+                        "style_instruction": _get_summary_style_prompt(summary_type)["instruction"],
                         "length_instruction": LENGTH_INSTRUCTIONS.get(
                             length,
                             LENGTH_INSTRUCTIONS["short"],
@@ -263,13 +343,7 @@ class SummaryService:
             }
         except Exception:
             del options
-            if summary_type == "bullet":
-                summary = _clip_text(
-                    "\n".join(f"- {sentence}" for sentence in sentences[:3]),
-                    max_length,
-                )
-            else:
-                summary = _clip_text(" ".join(sentences[:3]), max_length)
+            summary = _fallback_summary(text, summary_type, max_length)
 
         return {
             "summary": summary,
