@@ -14,6 +14,9 @@ from app.exceptions.documents import (
 from app.models.document import Document
 from .documents_text_extractor import DocumentTextExtractor
 
+from app.models.document_chunk import DocumentChunk
+from app.services.text_chunker import TextChunker
+
 
 class DocumentIngestionService:
     def __init__(self) -> None:
@@ -57,6 +60,18 @@ class DocumentIngestionService:
 
         extracted_text_path.write_text(extracted_text, encoding="utf-8")
 
+        chunker = TextChunker()
+        chunks = chunker.chunk_text(extracted_text)
+
+        document_chunks = [
+            DocumentChunk(
+                document_id=document_id,
+                chunk_index=index,
+                content=chunk,
+                character_count=len(chunk),
+            ) for index, chunk in enumerate(chunks)
+        ]
+
         document = Document(
             id=document_id,
             original_filename=original_filename,
@@ -70,6 +85,8 @@ class DocumentIngestionService:
         )
 
         db.add(document)
+        db.add_all(document_chunks)
+        
         await db.commit()
         await db.refresh(document)
 

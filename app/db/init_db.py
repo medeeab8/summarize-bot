@@ -3,6 +3,7 @@ from app.db.session import engine
 
 # Import models here so SQLAlchemy registers them
 from app.models.document import Document  
+from app.models.document_chunk import DocumentChunk
 
 
 async def init_db() -> None:
