@@ -196,52 +196,6 @@ button.secondary {
   color: var(--danger);
 }
 
-.upload-result {
-  margin-bottom: 16px;
-  padding: 16px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: rgba(11, 15, 42, 0.45);
-}
-
-.upload-result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.upload-result-header h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.metadata-grid {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-}
-
-.metadata-grid div {
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(26, 36, 70, 0.7);
-  border: 1px solid rgba(36, 48, 82, 0.8);
-}
-
-.metadata-grid dt {
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.metadata-grid dd {
-  margin: 0;
-  word-break: break-word;
-}
-
 .footer {
   text-align: center;
   color: var(--muted);
