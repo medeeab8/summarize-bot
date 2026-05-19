@@ -82,3 +82,8 @@ Short steps that were needed:
 
 1. User uploads a document → backend validates it → saves it → extracts text → stores document metadata → makes it available for future RAG.
 
+## Qdrant
+
+- curl http://localhost:6333/collections/document_chunks_ollama
+
+- Delete: curl -X DELETE "http://localhost:6333/collections/document_chunks_ollama"

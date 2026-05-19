@@ -15,11 +15,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
       langchain>=1.2.15 \
       langchain-ollama>=1.1.0 \
       langchain-openai>=1.2.0 \
+      ollama>=0.6.0 \
       pydantic>=2.12.5 \
       pydantic-settings>=2.11.0 \
     pypdf>=6.0.0 \
     python-multipart>=0.0.20 \
       python-dotenv>=1.2.1 \
+    qdrant-client>=1.18.0 \
     sqlalchemy>=2.0.41 \
       uvicorn>=0.40.0
 

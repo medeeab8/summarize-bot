@@ -7,6 +7,8 @@ from app.exceptions.documents import DocumentTextExtractionError
 
 class DocumentTextExtractor:
     def extract(self, file_path: str, extension: str) -> str:
+        # Route extraction by normalized file type so each format can use the
+        # simplest parser available.
         extension = extension.lower()
 
         if extension == "pdf":
@@ -21,6 +23,8 @@ class DocumentTextExtractor:
 
     def _extract_pdf(self, file_path: str) -> str:
         try:
+            # Read each page independently, then merge the extracted text into a
+            # single document string.
             reader = PdfReader(file_path)
 
             pages: list[str] = []
@@ -38,6 +42,7 @@ class DocumentTextExtractor:
 
     def _extract_plain_text(self, file_path: str) -> str:
         try:
+            # Prefer UTF-8, then fall back to latin-1 for less strict legacy files.
             return Path(file_path).read_text(encoding="utf-8").strip()
 
         except UnicodeDecodeError:

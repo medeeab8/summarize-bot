@@ -15,6 +15,10 @@ class Environment(str, Enum):
     TESTING = "testing"
     PRODUCTION = "production"
 
+class EmbeddingProvider(str, Enum):
+    OPENAI = "openai"
+    OLLAMA = "ollama"
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),
@@ -49,7 +53,7 @@ class Settings(BaseSettings):
 
     # Agent settings
     AGENT_NAME: str = "Summarize Bot"
-    OPENAI_API_KEY: str = Field(..., env="OPENAI_API_KEY")
+    OPENAI_API_KEY: str | None = Field(default=None, env="OPENAI_API_KEY")
 
     # LLM provider settings
     LLM_PROVIDER: str = Field(default="openai", env="LLM_PROVIDER")  # 'openai' or 'ollama'
@@ -60,11 +64,58 @@ class Settings(BaseSettings):
     SUMMARY_MAX_TOKENS: int = Field(default=400, env="SUMMARY_MAX_TOKENS")
     SUMMARY_MAX_LENGTH: int = Field(default=5000, env="SUMMARY_MAX_LENGTH")
 
-    # File upload settings
+  # File upload settings
     UPLOAD_DIR: str = "storage/uploads"
     EXTRACTED_TEXT_DIR: str = "storage/extracted_text"
-    MAX_UPLOAD_SIZE_MS: int = 20
-    ALLOWED_DOCUMENT_EXTENSTIONS: set[str] = {"pdf", "txt", "md"}
+    MAX_UPLOAD_SIZE_MB: int = 20
+    ALLOWED_DOCUMENT_EXTENSIONS: set[str] = {"pdf", "txt", "md"}
+
+    # Vector DB settings
+    QDRANT_URL: str = Field(default="http://localhost:6333", env="QDRANT_URL")
+    QDRANT_COLLECTION_NAME: str = Field(
+        default="document_chunks_ollama",
+        env="QDRANT_COLLECTION_NAME",
+    )
+
+    # Embedding provider settings
+    EMBEDDING_PROVIDER: EmbeddingProvider = Field(
+        default=EmbeddingProvider.OLLAMA,
+        env="EMBEDDING_PROVIDER",
+    )
+
+    # Ollama embedding settings
+    OLLAMA_EMBEDDING_MODEL: str = Field(
+        default="nomic-embed-text",
+        env="OLLAMA_EMBEDDING_MODEL",
+    )
+    OLLAMA_EMBEDDING_DIMENSION: int = Field(
+        default=768,
+        env="OLLAMA_EMBEDDING_DIMENSION",
+    )
+
+    # OpenAI embedding settings
+    OPENAI_EMBEDDING_MODEL: str = Field(
+        default="text-embedding-3-small",
+        env="OPENAI_EMBEDDING_MODEL",
+    )
+    OPENAI_EMBEDDING_DIMENSION: int = Field(
+        default=1536,
+        env="OPENAI_EMBEDDING_DIMENSION",
+    )
+
+    @property
+    def embedding_model(self) -> str:
+        if self.EMBEDDING_PROVIDER == EmbeddingProvider.OPENAI:
+            return self.OPENAI_EMBEDDING_MODEL
+
+        return self.OLLAMA_EMBEDDING_MODEL
+
+    @property
+    def embedding_dimension(self) -> int:
+        if self.EMBEDDING_PROVIDER == EmbeddingProvider.OPENAI:
+            return self.OPENAI_EMBEDDING_DIMENSION
+
+        return self.OLLAMA_EMBEDDING_DIMENSION
 
 @lru_cache
 def get_settings() -> Settings:

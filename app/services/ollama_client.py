@@ -6,6 +6,7 @@ from app.services.openai_client import get_openai_client
 
 class OllamaClient:
     def __init__(self, api_url: str, model: str, temperature: float):
+        # Normalize the base URL once so all later calls share the same endpoint.
         self.api_url = api_url.rstrip("/")
         self.model = model
         self._client = ChatOllama(
@@ -16,6 +17,8 @@ class OllamaClient:
 
     @staticmethod
     def _response_to_text(response) -> str:
+        # LangChain responses can arrive as plain strings or structured content;
+        # flatten them into one text payload for the API layer.
         content = response.content
         if isinstance(content, str):
             return content
@@ -30,6 +33,7 @@ class OllamaClient:
         return str(content)
 
     async def ping(self):
+        # Use a lightweight chat round-trip to confirm the model is reachable.
         response = await self._client.ainvoke("ping")
         return {
             "status": "ok",
@@ -39,6 +43,7 @@ class OllamaClient:
         }
 
     async def create_response(self, prompt: str, model: str | None = None):
+        # Rebind only when a request overrides the default model.
         llm = self._client if model is None or model == self.model else self._client.bind(model=model)
         response = await llm.ainvoke(prompt)
         return {
@@ -47,12 +52,16 @@ class OllamaClient:
         }
 
     def get_chat_model(self, model: str | None = None, **kwargs):
+        # Expose the LangChain chat model so higher-level services can compose
+        # prompts and parsers around it.
         llm = self._client if model is None or model == self.model else self._client.bind(model=model)
         return llm.bind(**kwargs) if kwargs else llm
 
 
 def get_llm_client():
     settings = get_settings()
+    # Choose the active LLM backend from configuration so callers do not need to
+    # care which provider is currently enabled.
     if settings.LLM_PROVIDER.lower() == "ollama":
         return OllamaClient(
             settings.OLLAMA_API_URL,

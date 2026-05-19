@@ -97,6 +97,7 @@ def count_characters(text: str) -> int:
 
 
 def _get_summary_style_prompt(summary_type: str) -> dict[str, str]:
+    # Unknown summary types fall back to the safest default prompt.
     return SUMMARY_STYLE_PROMPTS.get(summary_type, SUMMARY_STYLE_PROMPTS["tldr"])
 
 
@@ -109,6 +110,8 @@ def _split_sentences(text: str) -> list[str]:
 
 
 def _split_text_chunks(text: str, target_chars: int) -> list[str]:
+    # Break long inputs down gradually: first by paragraph, then by sentence,
+    # then by word only if a single sentence is still too large.
     paragraphs = [paragraph.strip() for paragraph in re.split(r"\n\s*\n", text.strip()) if paragraph.strip()]
     if not paragraphs:
         return []
@@ -181,6 +184,7 @@ def _clip_text(text: str, max_length: int) -> str:
     text = re.sub(r"[\s,:;\-–—]+$", "", text)
 
     if len(text) > max_length:
+        # Prefer clipping on a sentence boundary so summaries still end cleanly.
         clipped = text[:max_length].rstrip()
 
         sentence_boundary = max(clipped.rfind(". "), clipped.rfind("! "), clipped.rfind("? "))
@@ -214,6 +218,8 @@ def _clip_text(text: str, max_length: int) -> str:
 
 
 def _fallback_summary(text: str, summary_type: str, max_length: int) -> str:
+    # The fallback path stays extractive so the API can still return something
+    # useful when the model call fails.
     sentences = _split_sentences(text)
     if not sentences:
         return ""
@@ -253,6 +259,8 @@ def _fallback_summary(text: str, summary_type: str, max_length: int) -> str:
 
 class SummaryService:
     def __init__(self, llm_client=None):
+        # Keep the LLM client swappable for tests while defaulting to the active
+        # provider from configuration.
         self._llm_client = llm_client or get_llm_client()
         self._settings = get_settings()
 
@@ -263,6 +271,7 @@ class SummaryService:
         return getattr(self._llm_client, "model", None)
 
     def _generation_kwargs(self, max_length: int) -> dict[str, int]:
+        # Translate the character target into provider-specific token controls.
         approx_tokens = max(32, min(self._settings.SUMMARY_MAX_TOKENS, max_length // 4))
         provider = self._provider_name()
         if provider == "ollama":
@@ -282,6 +291,7 @@ class SummaryService:
     ) -> dict[str, object]:
         provider = self._provider_name()
         model = self._model_name()
+        # Skip model calls entirely when the input has no sentence-like content.
         if not _split_sentences(text):
             return {
                 "summary": "",
@@ -293,6 +303,8 @@ class SummaryService:
 
         try:
             async def run_langchain_summary(source_text: str, limit: int) -> str:
+                # Build the prompt+model+parser chain at the last possible moment
+                # so provider-specific generation kwargs can depend on the limit.
                 chain = (
                     SUMMARY_PROMPT
                     | self._llm_client.get_chat_model(**self._generation_kwargs(limit))
@@ -317,10 +329,13 @@ class SummaryService:
 
             current_text = text.strip()
             for _ in range(MAX_REDUCTION_PASSES):
+                # If the text already fits, summarize it directly.
                 if len(current_text) <= CHUNK_TARGET_CHARS:
                     summary = await run_langchain_summary(current_text, max_length)
                     break
 
+                # Otherwise, summarize each chunk first and then summarize the
+                # reduced text on the next pass.
                 chunks = _split_text_chunks(current_text, CHUNK_TARGET_CHARS)
                 if len(chunks) <= 1:
                     summary = await run_langchain_summary(current_text[:CHUNK_TARGET_CHARS], max_length)
@@ -342,6 +357,8 @@ class SummaryService:
                 "fallback_used": False,
             }
         except Exception:
+            # Fall back to an extractive summary instead of surfacing a model error
+            # to the API consumer.
             del options
             summary = _fallback_summary(text, summary_type, max_length)
 
