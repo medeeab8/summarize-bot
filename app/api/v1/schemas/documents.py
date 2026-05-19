@@ -18,4 +18,4 @@ class DocumentResponse(BaseModel):
 
 class DocumentUploadResponse(BaseModel):
     message: str
-    document: DocumentResponse
+    documents: list[DocumentResponse]

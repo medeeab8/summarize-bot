@@ -20,22 +20,23 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
     status_code=status.HTTP_201_CREATED,
 )
 async def upload_document(
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
 ):
     service = DocumentIngestionService()
 
     try:
-        document = await service.upload_document(
-            file=file,
-            db=db,
-        )
+        documents = []
+
+        for file in files:
+            document = await service.upload_document(file=file, db=db)
+            documents.append(document)
 
         return {
-            "message": "Document uploaded and processed successfully",
-            "document": document,
+            "message": f"{len(documents)} documents uploaded successfully",
+            "documents": documents,
         }
-
+    
     except UnsupportedDocumentTypeError as exc:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
