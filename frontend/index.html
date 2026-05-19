@@ -30,6 +30,49 @@
         </div>
 
         <div class="field">
+          <label for="documentFile">Upload a document</label>
+          <div class="row upload-row">
+            <input id="documentFile" type="file" accept=".pdf,.doc,.docx,.txt,.md,.rtf" />
+            <button id="uploadBtn" class="secondary">Upload file</button>
+          </div>
+          <small class="hint">Uploads the file to /api/v1/documents/upload using multipart form data.</small>
+          <p id="uploadStatus" class="upload-status" aria-live="polite">Choose a file to upload.</p>
+        </div>
+
+        <div id="uploadedDocumentPanel" class="upload-result" hidden>
+          <div class="upload-result-header">
+            <h2>Uploaded document</h2>
+            <span id="uploadedDocumentBadge" class="counter-pill">Ready</span>
+          </div>
+          <dl class="metadata-grid">
+            <div>
+              <dt>Original name</dt>
+              <dd id="uploadedOriginalFilename">-</dd>
+            </div>
+            <div>
+              <dt>Stored name</dt>
+              <dd id="uploadedStoredFilename">-</dd>
+            </div>
+            <div>
+              <dt>Type</dt>
+              <dd id="uploadedContentType">-</dd>
+            </div>
+            <div>
+              <dt>Size</dt>
+              <dd id="uploadedFileSize">-</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd id="uploadedProcessingStatus">-</dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd id="uploadedCreatedAt">-</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="field">
           <label for="inputText">Content to summarize</label>
           <textarea id="inputText" rows="10" placeholder="Paste text here..."></textarea>
           <div class="counter-row">

@@ -2,3 +2,6 @@ __pycache__/
 .venv/
 .env
 logs
+storage/uploads/*
+storage/extracted_text/*
+*.db

@@ -78,3 +78,7 @@ Short steps that were needed:
 5. Prefer a smaller or faster Ollama model if responses are still slow on CPU.
 6. Cleanly clip the final text at a sentence or word boundary, instead of forcing long outputs and ending them with `...`.
 
+## RAG steps
+
+1. User uploads a document → backend validates it → saves it → extracts text → stores document metadata → makes it available for future RAG.
+

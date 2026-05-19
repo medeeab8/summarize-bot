@@ -3,6 +3,17 @@ const apiDot = document.getElementById("apiDot");
 const apiText = document.getElementById("apiText");
 const apiBaseInput = document.getElementById("apiBase");
 const checkApiBtn = document.getElementById("checkApi");
+const documentFileInput = document.getElementById("documentFile");
+const uploadBtn = document.getElementById("uploadBtn");
+const uploadStatus = document.getElementById("uploadStatus");
+const uploadedDocumentPanel = document.getElementById("uploadedDocumentPanel");
+const uploadedDocumentBadge = document.getElementById("uploadedDocumentBadge");
+const uploadedOriginalFilename = document.getElementById("uploadedOriginalFilename");
+const uploadedStoredFilename = document.getElementById("uploadedStoredFilename");
+const uploadedContentType = document.getElementById("uploadedContentType");
+const uploadedFileSize = document.getElementById("uploadedFileSize");
+const uploadedProcessingStatus = document.getElementById("uploadedProcessingStatus");
+const uploadedCreatedAt = document.getElementById("uploadedCreatedAt");
 const summarizeBtn = document.getElementById("summarizeBtn");
 const clearBtn = document.getElementById("clearBtn");
 const inputText = document.getElementById("inputText");
@@ -28,6 +39,56 @@ const setStatus = (state, text) => {
 };
 
 const normalizeBase = (value) => value.replace(/\/$/, "");
+
+const formatBytes = (value) => {
+  if (!Number.isFinite(value) || value < 0) {
+    return "-";
+  }
+
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  const units = ["KB", "MB", "GB"];
+  let size = value / 1024;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+};
+
+const formatTimestamp = (value) => {
+  if (!value) {
+    return "-";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString();
+};
+
+const setUploadStatus = (state, text) => {
+  uploadStatus.dataset.state = state;
+  uploadStatus.textContent = text;
+};
+
+const renderUploadedDocument = (document) => {
+  uploadedDocumentPanel.hidden = false;
+  uploadedDocumentBadge.textContent = document.status || "Uploaded";
+  uploadedOriginalFilename.textContent = document.original_filename || "-";
+  uploadedStoredFilename.textContent = document.stored_filename || "-";
+  uploadedContentType.textContent = document.content_type || "Unknown";
+  uploadedFileSize.textContent = formatBytes(document.file_size_bytes);
+  uploadedProcessingStatus.textContent = document.status || "-";
+  uploadedCreatedAt.textContent = formatTimestamp(document.created_at);
+};
 
 const countCharacters = (text) => text.length;
 
@@ -105,6 +166,42 @@ const checkApi = async () => {
     setStatus("ok", "API is healthy");
   } catch (error) {
     setStatus("error", "API unavailable");
+  }
+};
+
+const uploadDocument = async () => {
+  const [file] = documentFileInput.files;
+  if (!file) {
+    setUploadStatus("error", "Choose a file before uploading.");
+    return;
+  }
+
+  const baseUrl = normalizeBase(apiBaseInput.value || defaultBaseUrl);
+  const formData = new FormData();
+  formData.append("file", file);
+
+  uploadBtn.disabled = true;
+  setUploadStatus("pending", `Uploading ${file.name}...`);
+
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/documents/upload`, {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || `Upload failed: ${response.status}`);
+    }
+
+    const uploadedDocument = data.document || {};
+    renderUploadedDocument(uploadedDocument);
+    setUploadStatus("success", data.message || data.messages || "File uploaded successfully.");
+  } catch (error) {
+    uploadedDocumentPanel.hidden = true;
+    setUploadStatus("error", error.message || "Unable to upload the selected file.");
+  } finally {
+    uploadBtn.disabled = false;
   }
 };
 
@@ -199,6 +296,11 @@ clearBtn.addEventListener("click", () => {
 });
 
 checkApiBtn.addEventListener("click", checkApi);
+uploadBtn.addEventListener("click", uploadDocument);
+documentFileInput.addEventListener("change", () => {
+  const [file] = documentFileInput.files;
+  setUploadStatus("idle", file ? `Selected ${file.name}` : "Choose a file to upload.");
+});
 summaryLength.addEventListener("change", updateCustomLengthVisibility);
 inputText.addEventListener("input", () => {
   updateCharacterCount(inputCharacterCount, inputText.value);
