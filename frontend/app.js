@@ -21,7 +21,6 @@ const summaryType = document.getElementById("summaryType");
 const summaryLength = document.getElementById("summaryLength");
 const customLengthField = document.getElementById("customLengthField");
 const customLengthInput = document.getElementById("customLength");
-const mockMode = document.getElementById("mockMode");
 
 let uploadedDocuments = [];
 
@@ -80,23 +79,14 @@ const getCustomLengthError = () => {
     return "Enter a custom character limit greater than 0.";
   }
 
-  const inputLength = getInputLength();
-  if (inputLength > 0 && customLength > inputLength) {
-    return `Custom character limit cannot exceed the input length (${inputLength}).`;
-  }
-
   return null;
 };
 
 const syncCustomLengthValidation = () => {
-  const inputLength = getInputLength();
-  customLengthInput.max = String(Math.max(inputLength, 1));
-
   const errorMessage = getCustomLengthError();
   customLengthInput.setCustomValidity(errorMessage || "");
-  customLengthInput.title = inputLength > 0
-    ? `Maximum allowed: ${inputLength} characters`
-    : "Paste content before setting a custom character limit.";
+  customLengthInput.removeAttribute("max");
+  customLengthInput.title = "Choose any positive character limit for the summary output.";
 
   return errorMessage;
 };
@@ -233,22 +223,6 @@ const summarizeUploadedDocuments = async () => {
   }
 };
 
-const summarizeMock = (text) => {
-  if (!text.trim()) {
-    return { summary: "" };
-  }
-  const sentences = text.split(/(?<=[.!?])\s+/).slice(0, 3);
-  const preview = sentences.join(" ").trim();
-  const customLength = getCustomLength();
-  if (summaryType.value === "bullet") {
-    const bulletPreview = sentences.map((line) => `• ${line.trim()}`).join("\n");
-    const summary = customLength ? bulletPreview.slice(0, customLength).trim() : bulletPreview;
-    return { summary };
-  }
-  const summary = customLength ? preview.slice(0, customLength).trim() : preview;
-  return { summary };
-};
-
 const summarizeWithApi = async () => {
   const baseUrl = normalizeBase(apiBaseInput.value || defaultBaseUrl);
 
@@ -268,7 +242,11 @@ const summarizeWithApi = async () => {
   });
 
   if (!response.ok) {
-    throw new Error(`Summarize failed: ${response.status}`);
+    const errorData = await response.json().catch(() => ({}));
+      const detail = Array.isArray(errorData.detail)
+        ? errorData.detail.map((item) => item.msg || JSON.stringify(item)).join("; ")
+        : errorData.detail;
+      throw new Error(detail || `Summarize failed: ${response.status}`);
   }
 
   const data = await response.json();
@@ -299,16 +277,11 @@ summarizeBtn.addEventListener("click", async () => {
   summarizeBtn.textContent = "Summarizing...";
 
   try {
-    let result;
-    if (mockMode.checked) {
-      result = summarizeMock(content);
-    } else {
-      result = await summarizeWithApi();
-    }
+    const result = await summarizeWithApi();
     outputText.value = result.summary;
     updateCharacterCount(outputCharacterCount, result.summary);
   } catch (error) {
-    outputText.value = "Unable to summarize via API. Enable mock mode or check the API URL.";
+      outputText.value = error.message || "Unable to summarize via API. Check the API URL and backend status.";
     updateCharacterCount(outputCharacterCount, outputText.value);
   } finally {
     summarizeBtn.disabled = false;
