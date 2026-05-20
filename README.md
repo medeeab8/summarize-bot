@@ -8,6 +8,28 @@ It supports two main workflows:
 
 Today, the project includes a working backend API, a simple browser UI, local document ingestion, Ollama or OpenAI-backed LLM support, and a Qdrant-backed retrieval pipeline for uploaded documents.
 
+## Quick start with Docker Compose
+
+The simplest way to power up the full app is with Docker Compose:
+
+```bash
+cp app/.env.example app/.env
+docker compose up --build
+```
+
+After the containers are up, pull the required Ollama models:
+
+```bash
+docker compose exec ollama ollama pull llama3.2:1b
+docker compose exec ollama ollama pull nomic-embed-text
+```
+
+Then open:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+- Qdrant: `http://localhost:6333`
+
 
 ## What the project does
 
