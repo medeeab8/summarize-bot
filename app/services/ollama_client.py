@@ -51,11 +51,49 @@ class OllamaClient:
             "model": model or self.model,
         }
 
+    @staticmethod
+    def _normalize_bind_kwargs(kwargs: dict) -> dict:
+        # Older/newer ollama client versions differ on whether generation
+        # controls like num_predict are accepted at the top level or only under
+        # the options payload. Normalize them here so callers can stay stable.
+        normalized = dict(kwargs)
+        option_keys = {
+            "num_predict",
+            "num_ctx",
+            "num_gpu",
+            "num_thread",
+            "repeat_last_n",
+            "repeat_penalty",
+            "seed",
+            "stop",
+            "temperature",
+            "top_k",
+            "top_p",
+            "tfs_z",
+            "mirostat",
+            "mirostat_eta",
+            "mirostat_tau",
+        }
+
+        option_values = {
+            key: normalized.pop(key)
+            for key in list(normalized)
+            if key in option_keys
+        }
+        if option_values:
+            existing_options = normalized.get("options")
+            merged_options = dict(existing_options) if isinstance(existing_options, dict) else {}
+            merged_options.update(option_values)
+            normalized["options"] = merged_options
+
+        return normalized
+
     def get_chat_model(self, model: str | None = None, **kwargs):
         # Expose the LangChain chat model so higher-level services can compose
         # prompts and parsers around it.
         llm = self._client if model is None or model == self.model else self._client.bind(model=model)
-        return llm.bind(**kwargs) if kwargs else llm
+        bind_kwargs = self._normalize_bind_kwargs(kwargs)
+        return llm.bind(**bind_kwargs) if bind_kwargs else llm
 
 
 def get_llm_client():

@@ -97,5 +97,6 @@ User request:
 Relevant document context:
 {context}
 
-Now generate the summary using only the context above. Output the summary only, without mentions of details of how the user wanted it done.
+Now generate the summary using only the context above. Output the summary only, without mentions of details of how the user wanted it done, and also no other irrelevent intro phrases, just the summary.
+If the files uploaded are unrelated and the user ask for a summary of the link between them, state that there is no connection clearly and provide a summary of each document instead, but do not mention the file name.
 """.strip()

@@ -2,6 +2,8 @@ from typing import Any, Dict, Literal
 
 from pydantic import BaseModel, Field, StrictInt, StrictStr, ValidationInfo, field_validator
 
+from app.core.settings import get_settings
+
 class SummarizeRequest(BaseModel):
     text: StrictStr = Field(..., min_length=1)
     max_length: StrictInt | None = Field(default=None, ge=1)
@@ -20,12 +22,8 @@ class SummarizeRequest(BaseModel):
         if value is None:
             return value
 
-        text = info.data.get("text")
-
-        if text is None:
-            return value
-
-        max_allowed = len(text)
+        del info
+        max_allowed = get_settings().SUMMARY_MAX_LENGTH
 
         if value > max_allowed:
             raise ValueError(f"max_length must be less than or equal to {max_allowed}")

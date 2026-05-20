@@ -56,10 +56,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = Field(default=None, env="OPENAI_API_KEY")
 
     # LLM provider settings
-    LLM_PROVIDER: str = Field(default="openai", env="LLM_PROVIDER")  # 'openai' or 'ollama'
+    LLM_PROVIDER: str = Field(default="ollama", env="LLM_PROVIDER")  # 'openai' or 'ollama'
     OLLAMA_API_URL: str = Field(default="http://ollama:11434", env="OLLAMA_API_URL")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini", env="OPENAI_MODEL")
-    OLLAMA_MODEL: str = Field(default="llama2", env="OLLAMA_MODEL")
+    OLLAMA_MODEL: str = Field(default="llama3.2:1b", env="OLLAMA_MODEL")
     LLM_TEMPERATURE: float = Field(default=0.2, env="LLM_TEMPERATURE")
     SUMMARY_MAX_TOKENS: int = Field(default=400, env="SUMMARY_MAX_TOKENS")
     SUMMARY_MAX_LENGTH: int = Field(default=5000, env="SUMMARY_MAX_LENGTH")

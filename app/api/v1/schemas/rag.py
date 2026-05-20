@@ -22,3 +22,13 @@ class RagSearchResponse(BaseModel):
     query: str
     top_k: int
     results: list[RagSearchResult]
+
+class RagReindexRequest(BaseModel):
+    document_ids: list[str] | None = Field(default=None)
+
+
+class RagReindexResponse(BaseModel):
+    message: str
+    indexed_chunks: int
+    indexed_documents: int
+    missing_document_ids: list[str] = []

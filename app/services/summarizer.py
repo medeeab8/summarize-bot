@@ -62,7 +62,7 @@ LENGTH_INSTRUCTIONS = {
     "short": "Keep it brief and dense.",
     "medium": "Keep it moderately detailed.",
     "long": "Allow more detail while staying focused on the main ideas.",
-    "custom": "Follow the requested character target closely while staying coherent.",
+    "custom": "Follow the requested character target closely and use much of the available space when the source supports it.",
 }
 
 SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
@@ -99,6 +99,37 @@ def count_characters(text: str) -> int:
 def _get_summary_style_prompt(summary_type: str) -> dict[str, str]:
     # Unknown summary types fall back to the safest default prompt.
     return SUMMARY_STYLE_PROMPTS.get(summary_type, SUMMARY_STYLE_PROMPTS["tldr"])
+
+
+def _get_style_instruction(summary_type: str, length: str, max_length: int) -> str:
+    base_instruction = _get_summary_style_prompt(summary_type)["instruction"]
+    if length != "custom":
+        return base_instruction
+
+    target_floor = max(120, int(max_length * 0.6))
+    custom_instruction_by_type = {
+        "tldr": (
+            "Write a fuller TL;DR in plain prose. Prefer 4 to 8 sentences, expand beyond the default short form "
+            "when the source supports it, and aim for roughly "
+            f"{target_floor} to {max_length} characters rather than collapsing to a very short answer."
+        ),
+        "bullet": (
+            "Return 5 to 10 bullets starting with '- '. Each bullet should contain one distinct takeaway with enough "
+            "detail to use much of the available space when the source supports it. Aim for roughly "
+            f"{target_floor} to {max_length} characters."
+        ),
+        "executive": (
+            "Write a more developed executive summary in multiple paragraphs. Cover the primary outcome first, then "
+            "key context, implications, and risks with enough detail to use much of the available space. Aim for roughly "
+            f"{target_floor} to {max_length} characters."
+        ),
+        "explain_like_12": (
+            "Explain the ideas in simple everyday language using several short paragraphs. Add enough detail and "
+            "examples to use much of the available space when the source supports it. Aim for roughly "
+            f"{target_floor} to {max_length} characters."
+        ),
+    }
+    return custom_instruction_by_type.get(summary_type, base_instruction)
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -291,6 +322,7 @@ class SummaryService:
     ) -> dict[str, object]:
         provider = self._provider_name()
         model = self._model_name()
+        allow_fallback = bool(options and options.get("allow_fallback"))
         # Skip model calls entirely when the input has no sentence-like content.
         if not _split_sentences(text):
             return {
@@ -313,7 +345,7 @@ class SummaryService:
                 generated_summary = await chain.ainvoke(
                     {
                         "style_system": _get_summary_style_prompt(summary_type)["system"],
-                        "style_instruction": _get_summary_style_prompt(summary_type)["instruction"],
+                        "style_instruction": _get_style_instruction(summary_type, length, limit),
                         "length_instruction": LENGTH_INSTRUCTIONS.get(
                             length,
                             LENGTH_INSTRUCTIONS["short"],
@@ -356,10 +388,17 @@ class SummaryService:
                 "approach": "langchain",
                 "fallback_used": False,
             }
-        except Exception:
-            # Fall back to an extractive summary instead of surfacing a model error
-            # to the API consumer.
-            del options
+        except Exception as exc:
+            if not allow_fallback:
+                model_label = f"/{model}" if model else ""
+                reason = str(exc).strip()
+                reason_suffix = f": {reason}" if reason else ""
+                raise RuntimeError(
+                    f"LLM summarization failed via {provider}{model_label}{reason_suffix}"
+                ) from exc
+
+            # Fall back to an extractive summary only when a caller explicitly
+            # opts in to that behavior.
             summary = _fallback_summary(text, summary_type, max_length)
 
         return {
