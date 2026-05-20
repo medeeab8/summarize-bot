@@ -6,6 +6,11 @@ const checkApiBtn = document.getElementById("checkApi");
 const documentFileInput = document.getElementById("documentFile");
 const uploadBtn = document.getElementById("uploadBtn");
 const uploadStatus = document.getElementById("uploadStatus");
+const ragQuery = document.getElementById("ragQuery");
+const ragSummaryType = document.getElementById("ragSummaryType");
+const ragLength = document.getElementById("ragLength");
+const ragSummarizeBtn = document.getElementById("ragSummarizeBtn");
+const ragStatus = document.getElementById("ragStatus");
 const summarizeBtn = document.getElementById("summarizeBtn");
 const clearBtn = document.getElementById("clearBtn");
 const inputText = document.getElementById("inputText");
@@ -17,6 +22,8 @@ const summaryLength = document.getElementById("summaryLength");
 const customLengthField = document.getElementById("customLengthField");
 const customLengthInput = document.getElementById("customLength");
 const mockMode = document.getElementById("mockMode");
+
+let uploadedDocuments = [];
 
 const isFileOrigin = window.location.protocol === "file:";
 const defaultBaseUrl = window.location.port === "5173" || isFileOrigin
@@ -35,6 +42,11 @@ const normalizeBase = (value) => value.replace(/\/$/, "");
 const setUploadStatus = (state, text) => {
   uploadStatus.dataset.state = state;
   uploadStatus.textContent = text;
+};
+
+const setRagStatus = (state, text) => {
+  ragStatus.dataset.state = state;
+  ragStatus.textContent = text;
 };
 
 const countCharacters = (text) => text.length;
@@ -146,11 +158,78 @@ const uploadDocument = async () => {
       throw new Error(data.detail || `Upload failed: ${response.status}`);
     }
 
+    uploadedDocuments = Array.isArray(data.documents) ? data.documents : [];
     setUploadStatus("success", data.message || "Files uploaded successfully.");
+    setRagStatus(
+      uploadedDocuments.length > 0 ? "success" : "idle",
+      uploadedDocuments.length > 0
+        ? `Ready to summarize ${uploadedDocuments.length} uploaded document${uploadedDocuments.length === 1 ? "" : "s"}.`
+        : "Upload documents first, then ask for a summary.",
+    );
   } catch (error) {
+    uploadedDocuments = [];
     setUploadStatus("error", error.message || "Unable to upload the selected file.");
+    setRagStatus("error", "Upload failed, so there are no documents available for RAG summary.");
   } finally {
     uploadBtn.disabled = false;
+  }
+};
+
+const summarizeUploadedDocuments = async () => {
+  outputText.value = "";
+  updateCharacterCount(outputCharacterCount, "");
+
+  if (uploadedDocuments.length === 0) {
+    setRagStatus("error", "Upload one or more documents before requesting a document-based summary.");
+    return;
+  }
+
+  const query = ragQuery.value.trim();
+  if (!query) {
+    setRagStatus("error", "Enter a question or summary request for the uploaded documents.");
+    return;
+  }
+
+  const baseUrl = normalizeBase(apiBaseInput.value || defaultBaseUrl);
+
+  ragSummarizeBtn.disabled = true;
+  ragSummarizeBtn.textContent = "Summarizing docs...";
+  setRagStatus("pending", "Generating a summary from the uploaded documents. It will appear in the summary output box below once you scroll down.");
+
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/summaries/rag`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        top_k: 5,
+        document_ids: uploadedDocuments.map((document) => document.id),
+        summary_type: ragSummaryType.value,
+        length: ragLength.value,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || `RAG summary failed: ${response.status}`);
+    }
+
+    const summary = data.summary || "";
+    outputText.value = summary;
+    updateCharacterCount(outputCharacterCount, summary);
+    setRagStatus(
+      "success",
+      data.sources?.length
+        ? `Summary generated using ${data.sources.length} matching source chunk${data.sources.length === 1 ? "" : "s"}. Scroll down to view it in the summary output box.`
+        : "Summary generated. Scroll down to view it in the summary output box.",
+    );
+  } catch (error) {
+    outputText.value = "";
+    updateCharacterCount(outputCharacterCount, "");
+    setRagStatus("error", error.message || "Unable to summarize the uploaded documents.");
+  } finally {
+    ragSummarizeBtn.disabled = false;
+    ragSummarizeBtn.textContent = "Summarize uploaded docs";
   }
 };
 
@@ -240,12 +319,14 @@ summarizeBtn.addEventListener("click", async () => {
 clearBtn.addEventListener("click", () => {
   inputText.value = "";
   outputText.value = "";
+  ragQuery.value = "";
   updateCharacterCount(inputCharacterCount, "");
   updateCharacterCount(outputCharacterCount, "");
 });
 
 checkApiBtn.addEventListener("click", checkApi);
 uploadBtn.addEventListener("click", uploadDocument);
+ragSummarizeBtn.addEventListener("click", summarizeUploadedDocuments);
 documentFileInput.addEventListener("change", () => {
   const files = Array.from(documentFileInput.files || []);
   if (files.length === 0) {
@@ -270,4 +351,5 @@ customLengthInput.addEventListener("input", syncCustomLengthValidation);
 updateCustomLengthVisibility();
 updateCharacterCount(inputCharacterCount, inputText.value);
 updateCharacterCount(outputCharacterCount, outputText.value);
+setRagStatus("idle", "Upload documents first, then ask for a summary.");
 checkApi();

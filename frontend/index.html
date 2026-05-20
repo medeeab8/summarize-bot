@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Summarize Bot</title>
+    <title>ContextLens</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="app">
       <header class="header">
         <div>
-          <h1>Summarize Bot</h1>
-          <p class="subtitle">Paste content, pick a summary type, and get a quick digest.</p>
+          <h1>ContextLens</h1>
+          <p class="subtitle">Turn raw text or uploaded documents into fast, grounded summaries with formats tailored to the way you read.</p>
         </div>
         <div class="status" id="apiStatus">
           <span class="dot" id="apiDot"></span>
@@ -29,61 +29,105 @@
           <small class="hint">Defaults to the current host. Health check uses /api/v1/health.</small>
         </div>
 
-        <div class="field">
-          <label for="documentFile">Upload documents</label>
-          <div class="row upload-row">
-            <input id="documentFile" type="file" accept=".pdf,.doc,.docx,.txt,.md,.rtf" multiple />
-            <button id="uploadBtn" class="secondary">Upload files</button>
-          </div>
-          <small class="hint">Uploads one or more files to /api/v1/documents/upload using multipart form data.</small>
-          <p id="uploadStatus" class="upload-status" aria-live="polite">Choose one or more files to upload.</p>
-        </div>
-
-        <div class="field">
-          <label for="inputText">Content to summarize</label>
-          <textarea id="inputText" rows="10" placeholder="Paste text here..."></textarea>
-          <div class="counter-row">
-            <span class="counter-pill">Characters: <strong id="inputCharacterCount">0</strong></span>
-          </div>
-        </div>
-
-        <div class="grid">
-          <div class="field">
-            <label for="summaryType">Summary type</label>
-            <select id="summaryType">
-              <option value="tldr">TL;DR</option>
-              <option value="bullet">Bullet summary</option>
-              <option value="executive">Executive summary</option>
-              <option value="explain_like_12">Explain like I’m 12</option>
-            </select>
+        <section class="summary-block summary-block-accented" aria-labelledby="uploadedSummaryHeading">
+          <div class="section-heading">
+            <h2 id="uploadedSummaryHeading">Document-Based Summary</h2>
+            <p>Upload files, then generate a grounded summary from the uploaded content.</p>
           </div>
           <div class="field">
-            <label for="summaryLength">Length</label>
-            <select id="summaryLength">
-              <option value="short">Short</option>
-              <option value="medium">Medium</option>
-              <option value="long">Long</option>
-              <option value="custom">Custom</option>
-            </select>
+            <label for="documentFile">Upload documents</label>
+            <div class="row upload-row">
+              <input id="documentFile" type="file" accept=".pdf,.doc,.docx,.txt,.md,.rtf" multiple />
+              <button id="uploadBtn" class="secondary">Upload files</button>
+            </div>
+            <small class="hint">Uploads one or more files to /api/v1/documents/upload using multipart form data.</small>
+            <p id="uploadStatus" class="upload-status" aria-live="polite">Choose one or more files to upload.</p>
           </div>
-          <div class="field" id="customLengthField" hidden>
-            <label for="customLength">Custom max characters</label>
-            <input id="customLength" type="number" min="1" step="1" placeholder="e.g. 350" />
-          </div>
-          <div class="field toggle">
-            <label for="mockMode">Mock mode</label>
-            <label class="switch">
-              <input type="checkbox" id="mockMode" />
-              <span class="slider"></span>
-            </label>
-            <small class="hint">Generate a client-side summary until the API is ready.</small>
-          </div>
-        </div>
 
-        <div class="actions">
-          <button id="summarizeBtn" class="primary">Summarize</button>
-          <button id="clearBtn" class="secondary">Clear</button>
-        </div>
+          <div class="field">
+            <label for="ragQuery">Ask for a document summary</label>
+            <textarea id="ragQuery" rows="4" placeholder="Ask for a summary based on the documents you uploaded, for example: Summarize the main risks and next steps."></textarea>
+            <div class="grid compact-grid">
+              <div class="field">
+                <label for="ragSummaryType">Summary style</label>
+                <select id="ragSummaryType">
+                  <option value="tldr">TL;DR</option>
+                  <option value="bullet_points">Bullet points</option>
+                  <option value="executive">Executive summary</option>
+                  <option value="technical">Technical summary</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="ragLength">Summary length</label>
+                <select id="ragLength">
+                  <option value="short">Short</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="long">Long</option>
+                </select>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="ragSummarizeBtn" class="primary">Summarize uploaded docs</button>
+            </div>
+            <small class="hint">This uses /api/v1/summaries/rag and only searches the documents uploaded in this browser session.</small>
+            <p id="ragStatus" class="upload-status" aria-live="polite">Upload documents first, then ask for a summary.</p>
+          </div>
+
+        </section>
+
+        <section class="summary-block summary-block-accented" aria-labelledby="quickSummaryHeading">
+          <div class="section-heading">
+            <h2 id="quickSummaryHeading">Quick Summary</h2>
+            <p>Paste text directly and get a summary without uploading documents.</p>
+          </div>
+
+          <div class="field">
+            <label for="inputText">Content to summarize</label>
+            <textarea id="inputText" rows="4" placeholder="Paste text here..."></textarea>
+            <div class="counter-row">
+              <span class="counter-pill">Characters: <strong id="inputCharacterCount">0</strong></span>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="field">
+              <label for="summaryType">Summary type</label>
+              <select id="summaryType">
+                <option value="tldr">TL;DR</option>
+                <option value="bullet">Bullet summary</option>
+                <option value="executive">Executive summary</option>
+                <option value="explain_like_12">Explain like I’m 12</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="summaryLength">Length</label>
+              <select id="summaryLength">
+                <option value="short">Short</option>
+                <option value="medium">Medium</option>
+                <option value="long">Long</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="field" id="customLengthField" hidden>
+              <label for="customLength">Custom max characters</label>
+              <input id="customLength" type="number" min="1" step="1" placeholder="e.g. 350" />
+            </div>
+            <div class="field toggle">
+              <label for="mockMode">Mock mode</label>
+              <label class="switch">
+                <input type="checkbox" id="mockMode" />
+                <span class="slider"></span>
+              </label>
+              <small class="hint">Generate a client-side summary until the API is ready.</small>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="summarizeBtn" class="primary">Summarize</button>
+            <button id="clearBtn" class="secondary">Clear</button>
+          </div>
+
+        </section>
       </section>
 
       <section class="panel">
@@ -97,7 +141,7 @@
       </section>
 
       <footer class="footer">
-        <span>Summarize Bot UI • Simple starter frontend</span>
+        <span>ContextLens • Text and document summaries in one workspace</span>
       </footer>
     </div>
 

@@ -53,6 +53,37 @@ body {
   box-shadow: 0 12px 30px rgba(6, 9, 26, 0.45);
 }
 
+.summary-block {
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(36, 48, 82, 0.85);
+  background: rgba(11, 15, 42, 0.38);
+}
+
+.summary-block + .summary-block {
+  margin-top: 20px;
+}
+
+.summary-block-accented {
+  background: linear-gradient(180deg, rgba(28, 39, 78, 0.7), rgba(11, 15, 42, 0.38));
+  border-color: rgba(255, 111, 0, 0.35);
+}
+
+.section-heading {
+  margin-bottom: 16px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.section-heading p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -125,6 +156,25 @@ textarea {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
+}
+
+.compact-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.compact-grid .field {
+  margin-bottom: 0;
+}
+
+.compact-grid label {
+  min-height: 1.5rem;
+  display: flex;
+  align-items: flex-end;
+}
+
+.compact-grid select {
+  width: 100%;
 }
 
 .actions {
@@ -251,6 +301,10 @@ button.secondary {
 @media (max-width: 640px) {
   .row {
     flex-direction: column;
+  }
+
+  .compact-grid {
+    grid-template-columns: 1fr;
   }
 
   .status {
